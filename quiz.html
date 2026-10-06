@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>國考題庫</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">🦴 Anatomy Atlas</a>
+  <nav><a href="index.html">筆記</a><a href="quiz.html" class="active">題庫</a><a href="viewer.html">3D 檢視器</a></nav>
+  <span class="spacer"></span>
+  <button id="theme" title="切換深淺色">🌓</button>
+</header>
+<main class="wrap narrow">
+  <h1>歷屆國考題庫</h1>
+  <p class="muted">題目取自參考書各章的歷屆考題，與筆記頁下方的題目同步記錄作答結果（存在這個瀏覽器）。</p>
+  <div class="qb-controls">
+    <select id="chapter" aria-label="章節"><option value="">全部章節</option></select>
+    <select id="filter" aria-label="範圍">
+      <option value="all">全部題目</option>
+      <option value="new">還沒做過</option>
+      <option value="wrong">上次答錯</option>
+    </select>
+    <label><input type="checkbox" id="shuffle" checked> 隨機順序</label>
+    <button id="start">開始</button>
+  </div>
+  <div id="stats" class="qb-stats"></div>
+  <div id="stage"></div>
+</main>
+<script src="js/quizbank.js"></script>
+</body>
+</html>

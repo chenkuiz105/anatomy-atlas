@@ -309,7 +309,7 @@ PAGE_TMPL = '''<!doctype html>
 <body>
 <header class="topbar">
   <a class="brand" href="../index.html">🦴 Anatomy Atlas</a>
-  <nav><a href="../index.html" class="active">筆記</a><a href="../viewer.html">3D 檢視器</a></nav>
+  <nav><a href="../index.html" class="active">筆記</a><a href="../quiz.html">題庫</a><a href="../viewer.html">3D 檢視器</a></nav>
   <span class="spacer"></span>
   <button id="theme" title="切換深淺色">🌓</button>
 </header>
@@ -345,6 +345,15 @@ PAGE_TMPL = '''<!doctype html>
 '''
 
 
+QUIZZES = []
+CURRENT = {}
+
+
+def quiz_key(exam_id, qtext):
+    plain = re.sub(r'[^\w\u4e00-\u9fff]', '', re.sub(r'<[^>]+>', '', qtext))
+    return f'{exam_id}|{plain[:10]}'
+
+
 def render_quiz(head, lines):
     """:::quiz <exam id> | <page>  /  question  /  '- wrong' or '* right' options  /  '> explanation'."""
     src, _, page = head.partition('|')
@@ -358,7 +367,12 @@ def render_quiz(head, lines):
         elif t:
             q.append(t)
     letters = 'ABCDE'
-    out = [f'<div class="quiz-card" data-q="{html.escape(src.strip())}">',
+    qtext = " ".join(q)
+    key = quiz_key(src.strip(), qtext)
+    QUIZZES.append(dict(key=key, id=src.strip(), page=page.strip(), q=inline(qtext),
+                        opts=[inline(t) for _, t in opts], ans=[i for i, (ok, _) in enumerate(opts) if ok][0] if any(ok for ok, _ in opts) else -1,
+                        expl=inline(" ".join(expl)) if expl else '', slug=CURRENT['slug'], title=CURRENT['title'], section=CURRENT['section']))
+    out = [f'<div class="quiz-card" data-q="{html.escape(key)}">',
            f'<div class="qhead"><span class="badge">{html.escape(src.strip())}</span>'
            f'<span class="qsrc">{html.escape(page.strip())}</span></div>',
            f'<div class="qtext">{inline(" ".join(q))}</div><div class="qopts">']
@@ -452,6 +466,7 @@ def main():
         out = []
         parse(p['lines'], 0, 0, ctx, out)
         body = '\n'.join(out)
+        CURRENT.update(slug=p['slug'], title=p['title'], section=p['props'].get('區段', ''))
         sup = os.path.join(SITE, 'supplements', f'{p["slug"]}.md')
         if os.path.exists(sup):
             body += '\n' + render_supplement(sup, ctx)
@@ -481,6 +496,14 @@ def main():
                           subject=p['props'].get('科目', ''), done=p['props'].get('整理完畢') == '__YES__',
                           stars=body.count('class="star"'), text=plain))
     build_zh(index)
+    seen, bank = set(), []
+    for qz in QUIZZES:
+        if qz['key'] in seen:
+            continue
+        seen.add(qz['key'])
+        bank.append(qz)
+    json.dump(bank, open(os.path.join(OUT, 'quizzes.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    print(f'{len(bank)} unique quiz questions ({len(QUIZZES)} incl. repeats)')
     json.dump(dict(pages=index), open(os.path.join(OUT, 'index.json'), 'w', encoding='utf-8'),
               ensure_ascii=False, separators=(',', ':'))
     print(f'{len(pages)} pages written')

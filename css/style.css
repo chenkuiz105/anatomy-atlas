@@ -185,3 +185,10 @@ mark { background: var(--hl); color: inherit; }
 .quiz-card .qopt.wrong { background: var(--bg-red); border-color: var(--c-red); }
 .quiz-card .qopt:disabled { cursor: default; color: var(--ink); }
 .quiz-card .qexpl { margin-top: 8px; font-size: 14px; }
+.wrap.narrow { max-width: 820px; }
+.muted { color: var(--muted); }
+.qb-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0 8px; }
+.qb-controls select { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); max-width: 100%; }
+.qb-stats { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+.quiz-card .spacer { flex: 1; }
+.qnext { margin-top: 10px; text-align: right; }

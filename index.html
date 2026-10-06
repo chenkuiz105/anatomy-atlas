@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy Atlas</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">🦴 Anatomy Atlas</a>
+  <nav><a href="index.html" class="active">筆記</a><a href="viewer.html">3D 檢視器</a></nav>
+  <span class="spacer"></span>
+  <button id="theme" title="切換深淺色">🌓</button>
+</header>
+<main class="wrap">
+  <section class="hero">
+    <h1>解剖學互動複習</h1>
+    <p>一階國考解剖重點筆記，搭配可旋轉、點選、分層的 3D 人體模型。</p>
+    <div class="cta">
+      <a href="viewer.html">開啟 3D 檢視器</a>
+      <a class="ghost" href="viewer.html#mode=find">3D 測驗：找結構</a>
+      <a class="ghost" href="viewer.html#mode=name">3D 測驗：命名</a>
+    </div>
+  </section>
+  <input id="q" class="search" type="search" placeholder="搜尋全部筆記內容（中英文皆可，例如：brachial plexus、腕隧道）">
+  <div id="hits"></div>
+  <div id="sections"></div>
+  <details class="legend">
+    <summary>筆記顏色說明</summary>
+    <p><span class="c-red"><b>紅</b></span>：口訣、重點　<span class="b-orange"><b>粗體+橘螢光</b></span>：影片重點、國考重點　<span class="c-green"><b>綠</b></span>：血管　<span class="c-purple"><b>紫</b></span>：疾病　<span class="c-orange"><b>橘</b></span>：神經　<span class="c-blue"><b>藍</b></span>：治療手法</p>
+    <p><span class="c-purple">★</span>：106-1（含）以前國考考過（一顆代表一次）　<span class="c-red"><b>★</b></span>：106-2（含）以後國考考點　<span class="u">底線</span>：國考考過的敘述</p>
+    <p>筆記頁的「🙈 遮住重點」會把橘色螢光重點遮起來，點一下才顯示，適合自我測驗。英文結構名稱有虛線底線的可以直接點開 3D 位置。</p>
+  </details>
+</main>
+<footer class="credit wrap">3D 模型：BodyParts3D, © The Database Center for Life Science, licensed under CC Attribution-Share Alike 2.1 Japan。</footer>
+<script src="js/home.js"></script>
+</body>
+</html>

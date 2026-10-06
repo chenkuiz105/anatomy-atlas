@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎨 各顏色使用說明</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="../index.html">🦴 Anatomy Atlas</a>
+  <nav><a href="../index.html" class="active">筆記</a><a href="../viewer.html">3D 檢視器</a></nav>
+  <span class="spacer"></span>
+  <button id="theme" title="切換深淺色">🌓</button>
+</header>
+<div class="note-layout">
+  <aside class="toc">
+    <div class="section-label"></div>
+    
+    <hr>
+    <a href="02.html">🙏 參考資料說明 →</a>
+  </aside>
+  <main>
+    <article class="note" id="note" data-page="01">
+      <h1>🎨 各顏色使用說明</h1>
+      <div class="tools">
+        <button id="cloze" aria-pressed="false" title="把橘色螢光重點遮起來，點一下顯示">🙈 遮住重點</button>
+        <button id="examOnly" aria-pressed="false" title="淡化沒有 ★ 的內容">★ 只看國考點</button>
+        <button id="expand" title="展開/收合所有折疊">⇕ 展開全部</button>
+        <span class="progress">
+          <label><input type="checkbox" data-key="r1"> 複習 1</label>
+          <label><input type="checkbox" data-key="r2"> 複習 2</label>
+          <label><input type="checkbox" data-key="r3"> 複習 3</label>
+        </span>
+      </div>
+      <p><span class="c-red"><b>紅</b></span><b> </b>：口訣、重點</p>
+<p><span class="b-orange"><b>粗體+橘螢光</b></span>：影片重點、國考重點</p>
+<p><span class="c-green"><b>綠色</b></span>：血管</p>
+<p><span class="c-purple"><b>紫色</b></span>：疾病</p>
+<p><span class="c-orange"><b>橘色</b></span>：神經</p>
+<p><span class="c-blue"><b>藍色</b></span>：治療手法(EX：手術)等</p>
+<p><span class="c-purple"><span class="star">★</span></span>：106-1(含)以前國考考過(一顆星星代表考過一次)</p>
+<p><span class="c-red"><b><span class="star">★</span>：</b></span>106-2(含)以後之國考考點</p>
+<p>底線：國考考過的敘述</p>
+<div class="gap"></div>
+    </article>
+    <nav class="pager"><a href="02.html">🙏 參考資料說明 →</a></nav>
+  </main>
+</div>
+<div class="lightbox" id="lightbox"><img alt=""></div>
+<script src="../js/notes.js"></script>
+</body>
+</html>

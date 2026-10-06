@@ -1,0 +1,59 @@
+.viewer-page { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.viewer-page .topbar { position: relative; }
+.mode-switch { display: flex; gap: 4px; }
+.stage { position: relative; flex: 1; min-height: 0; background: radial-gradient(circle at 50% 40%, #3a4250, #14171c 75%); }
+#c { width: 100%; height: 100%; display: block; touch-action: none; }
+.loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; pointer-events: none; }
+.hover-tip { position: absolute; pointer-events: none; background: rgba(0,0,0,.75); color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 13px; white-space: nowrap; transform: translate(12px, 12px); }
+
+.panel { position: absolute; top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); max-height: calc(100% - 80px); overflow: auto; }
+.panel.left { left: 12px; width: 270px; padding: 10px 12px; }
+.panel.left.collapsed { width: auto; }
+.panel.left.collapsed .panel-body { display: none; }
+.panel-toggle { float: right; padding: 0 8px; }
+.panel h3 { font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.panel.right { right: 12px; width: 300px; padding: 12px; }
+.search.small { margin: 0; padding: 6px 10px; width: calc(100% - 40px); font-size: 14px; }
+.results { list-style: none; padding: 0; margin: 4px 0 0; max-height: 220px; overflow: auto; font-size: 14px; }
+.results li { padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+.results li:hover, .results li.active { background: var(--accent-soft); }
+.results li small { color: var(--muted); }
+
+.layer-row { display: grid; grid-template-columns: 22px 1fr 90px; align-items: center; gap: 6px; font-size: 14px; margin: 4px 0; }
+.layer-row input[type=range] { width: 90px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chips button { font-size: 13px; padding: 2px 8px; }
+.chips.small button { font-size: 12px; }
+
+.info-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.info-name { font-size: 18px; font-weight: 700; line-height: 1.3; }
+.info-sub { font-size: 13px; color: var(--muted); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.info-notes { font-size: 14px; margin-top: 10px; }
+.info-notes a { display: block; }
+
+.toolbar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; background: var(--panel); padding: 6px; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+
+.label3d { position: absolute; pointer-events: none; font-size: 12px; background: rgba(255,255,255,.92); color: #111; padding: 1px 6px; border-radius: 4px; border-left: 3px solid #2563eb; white-space: nowrap; transform: translate(-50%, -100%); }
+
+.quiz { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; width: min(520px, calc(100% - 24px)); }
+.quiz-prompt { font-size: 17px; font-weight: 600; }
+.quiz-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.quiz-choices button.right { background: var(--bg-green); border-color: var(--c-green); }
+.quiz-choices button.wrong { background: var(--bg-red); border-color: var(--c-red); }
+.quiz-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; color: var(--muted); }
+.quiz-mode .panel.right { display: none; }
+
+.credit { font-size: 11px; color: var(--muted); padding: 2px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; gap: 6px; padding: 6px 10px; }
+  .topbar nav { display: none; }
+  .panel.left { width: calc(100% - 24px); max-height: 45%; }
+  .panel.left.collapsed { width: auto; }
+  .panel.right { left: 12px; right: 12px; width: auto; top: auto; bottom: 64px; max-height: 40%; }
+  .quiz { top: auto; bottom: 64px; }
+  .quiz-choices { grid-template-columns: 1fr; }
+  .toolbar { flex-wrap: wrap; justify-content: center; width: calc(100% - 24px); }
+}

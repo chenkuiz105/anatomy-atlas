@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>3D 解剖檢視器</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/viewer.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three.module.js",
+  "three/addons/": "./vendor/jsm/"
+} }
+</script>
+</head>
+<body class="viewer-page">
+<header class="topbar">
+  <a class="brand" href="index.html">🦴 Anatomy Atlas</a>
+  <nav>
+    <a href="index.html">筆記</a>
+    <a href="viewer.html" class="active">3D 檢視器</a>
+  </nav>
+  <span class="spacer"></span>
+  <div class="mode-switch" role="tablist">
+    <button data-mode="explore" class="on">探索</button>
+    <button data-mode="find">找結構</button>
+    <button data-mode="name">命名測驗</button>
+  </div>
+</header>
+
+<main class="stage">
+  <canvas id="c"></canvas>
+  <div id="loading" class="loading">載入 3D 模型中… <span id="loadpct"></span></div>
+  <div id="hover" class="hover-tip" hidden></div>
+
+  <!-- left: layers & regions -->
+  <aside class="panel left" id="leftPanel">
+    <button class="panel-toggle" data-target="leftPanel" title="收合">☰</button>
+    <div class="panel-body">
+      <input id="search" class="search small" placeholder="搜尋結構（英文 / 中文）…" autocomplete="off">
+      <ul id="searchResults" class="results"></ul>
+      <h3>系統層</h3>
+      <div id="layers"></div>
+      <h3>區域</h3>
+      <div id="regions" class="chips"></div>
+      <h3>視角</h3>
+      <div class="chips">
+        <button data-view="front">前</button><button data-view="back">後</button>
+        <button data-view="left">左</button><button data-view="right">右</button>
+        <button data-view="top">上</button><button data-view="bottom">下</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- right: selection info -->
+  <aside class="panel right" id="info" hidden>
+    <div class="info-head">
+      <div>
+        <div id="infoName" class="info-name"></div>
+        <div id="infoSub" class="info-sub"></div>
+      </div>
+      <button id="infoClose" title="關閉">✕</button>
+    </div>
+    <div class="actions">
+      <button id="actHide" title="H">隱藏</button>
+      <button id="actFade" title="F">半透明</button>
+      <button id="actIsolate" title="I">只看這個</button>
+      <button id="actFocus" title="空白鍵">置中</button>
+    </div>
+    <div id="infoGroups" class="chips small"></div>
+    <div id="infoNotes" class="info-notes"></div>
+  </aside>
+
+  <!-- bottom toolbar -->
+  <div class="toolbar">
+    <button id="undo" title="復原 (Ctrl+Z)">↶ 復原</button>
+    <button id="showAll" title="全部顯示">全部顯示</button>
+    <button id="multi" aria-pressed="false" title="多選 (按住 Shift 也可)">多選</button>
+    <button id="labels" aria-pressed="false" title="顯示已選結構的標籤">標籤</button>
+    <button id="reset" title="重設">重設</button>
+  </div>
+
+  <!-- quiz overlay -->
+  <div id="quiz" class="quiz" hidden>
+    <div id="quizPrompt" class="quiz-prompt"></div>
+    <div id="quizChoices" class="quiz-choices"></div>
+    <div class="quiz-foot"><span id="quizScore"></span><button id="quizNext">下一題 →</button></div>
+  </div>
+</main>
+
+<footer class="credit">
+  3D 模型：BodyParts3D, © The Database Center for Life Science, licensed under CC Attribution-Share Alike 2.1 Japan（經簡化與壓縮）。
+</footer>
+<script type="module" src="js/viewer.js"></script>
+</body>
+</html>

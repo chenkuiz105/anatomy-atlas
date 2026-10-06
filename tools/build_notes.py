@@ -345,6 +345,53 @@ PAGE_TMPL = '''<!doctype html>
 '''
 
 
+def render_quiz(head, lines):
+    """:::quiz <exam id> | <page>  /  question  /  '- wrong' or '* right' options  /  '> explanation'."""
+    src, _, page = head.partition('|')
+    q, opts, expl = [], [], []
+    for ln in lines:
+        t = ln.strip()
+        if t.startswith(('- ', '* ')):
+            opts.append((t[0] == '*', t[2:]))
+        elif t.startswith('> '):
+            expl.append(t[2:])
+        elif t:
+            q.append(t)
+    letters = 'ABCDE'
+    out = [f'<div class="quiz-card" data-q="{html.escape(src.strip())}">',
+           f'<div class="qhead"><span class="badge">{html.escape(src.strip())}</span>'
+           f'<span class="qsrc">{html.escape(page.strip())}</span></div>',
+           f'<div class="qtext">{inline(" ".join(q))}</div><div class="qopts">']
+    for i, (ok, text) in enumerate(opts):
+        out.append(f'<button class="qopt" data-ok="{1 if ok else 0}">({letters[i]}) {inline(text)}</button>')
+    out.append('</div>')
+    if expl:
+        out.append(f'<div class="qexpl" hidden>💡 {inline(" ".join(expl))}</div>')
+    out.append('</div>')
+    return ''.join(out)
+
+
+def render_supplement(path, ctx):
+    lines = open(path, encoding='utf-8').read().split('\n')
+    out, buf, i = [], [], 0
+    while i < len(lines):
+        if lines[i].startswith(':::quiz'):
+            if buf:
+                parse(buf, 0, 0, ctx, out)
+                buf = []
+            j = i + 1
+            while j < len(lines) and lines[j].strip() != ':::':
+                j += 1
+            out.append(render_quiz(lines[i][len(':::quiz'):], lines[i + 1:j]))
+            i = j + 1
+        else:
+            buf.append(lines[i])
+            i += 1
+    if buf:
+        parse(buf, 0, 0, ctx, out)
+    return '<section class="supplement" id="book">' + '\n'.join(out) + '</section>'
+
+
 def slugify(n, page_id):
     return f'{n:02d}'
 
@@ -405,6 +452,9 @@ def main():
         out = []
         parse(p['lines'], 0, 0, ctx, out)
         body = '\n'.join(out)
+        sup = os.path.join(SITE, 'supplements', f'{p["slug"]}.md')
+        if os.path.exists(sup):
+            body += '\n' + render_supplement(sup, ctx)
         for local, name in ctx.img_map:
             dst = os.path.join(OUT, 'img', name)
             os.makedirs(os.path.dirname(dst), exist_ok=True)

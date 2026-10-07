@@ -427,13 +427,27 @@ def build_zh(index):
                 counts.setdefault(en, {}).setdefault(zh, 0)
                 counts[en][zh] += 1
     parts = json.load(open(os.path.join(SITE, 'models', 'parts.json'), encoding='utf-8'))
+    # "有關腹直肌(rectus abdominis)" -> the regex caught the sentence's leading words too
+    lead = re.compile(r'^(有關|位於|連接|形成|包括|包含|即|為|是|的|和|與|及|由|在|經過|經|到|至|從|稱為|叫做|或|其|此|該|各|右側|左側)+')
     zh = {}
     for en, c in counts.items():
-        name = max(c.items(), key=lambda kv: kv[1])[0]
+        cleaned = {}
+        for name, n in c.items():
+            name = lead.sub('', name)
+            if name:
+                cleaned[name] = cleaned.get(name, 0) + n
+        if not cleaned:
+            continue
+        name = max(cleaned.items(), key=lambda kv: (kv[1], -len(kv[0])))[0]
         layers = {parts[i]['l'] for i in terms[en] if i in parts}
         if layers == {'muscles'} and '肌' not in name:
             continue  # e.g. "三角(deltoid)" was about a region, not the muscle
         zh[en] = name
+    # curated names fill in whatever the notes never spell out
+    manual = os.path.join(SITE, 'models', 'zh_manual.json')
+    if os.path.exists(manual):
+        for en, name in json.load(open(manual, encoding='utf-8')).items():
+            zh.setdefault(en, name)
     json.dump(zh, open(os.path.join(SITE, 'models', 'zh.json'), 'w', encoding='utf-8'),
               ensure_ascii=False, separators=(',', ':'))
     print(f'{len(zh)} Chinese names from notes')

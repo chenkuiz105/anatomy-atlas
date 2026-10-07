@@ -31,7 +31,14 @@ def proc(i):
     n = len(m.faces)
     a = {name.get(x) for x in anc(i)}; a.discard(None)
     lay = layer({s for s in a if s.endswith('system')})
-    tgt = 60000 if lay == 'skin' else int(min(max(n * 0.12, 400), 5000))
+    # QUALITY=sd (default, phones) or hd (desktop): how many faces each part keeps
+    hd = os.environ.get('QUALITY') == 'hd'
+    if lay == 'skin':
+        tgt = 160000 if hd else 60000
+    elif hd:
+        tgt = int(min(max(n * 0.4, 2000), 30000))
+    else:
+        tgt = int(min(max(n * 0.12, 400), 5000))
     v, f = m.vertices, m.faces
     if n > tgt:
         v, f = fast_simplification.simplify(np.asarray(v, np.float32), np.asarray(f, np.int32), target_reduction=1 - tgt / n)

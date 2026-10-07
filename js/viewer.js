@@ -22,18 +22,48 @@ const LAYERS = [
   { id: 'organs',   zh: '內臟',     color: 0xd9888a, visible: false, opacity: 1 },
 ];
 const KIND_COLOR = { artery: 0xd32f2f, vein: 0x3f6fd8 };
+// organs get their textbook colours by name so the viscera read at a glance
+const ORGAN_COLOR = [
+  [/liver/, 0x8e3b2f], [/lung/, 0xe8a9a3], [/heart|ventricle|atrium|myocard/, 0xb33a3a], [/stomach/, 0xd98c7a],
+  [/kidney/, 0x9c4a3c], [/spleen/, 0x7a2e3a], [/pancreas/, 0xe0c38a], [/gall ?bladder|bile/, 0x5f8f4a],
+  [/intestine|colon|rectum|duodenum|jejunum|ileum|caecum|cecum|appendix/, 0xd9a088], [/bladder|ureter|urethra/, 0xd7c27a],
+  [/brain|cerebr|cerebell|gyrus|lobe|thalam|pons|medulla|midbrain|capsule|corpus callosum|nucleus|putamen|pallidus|hippocamp|amygdal|insula/, 0xe3c1b4],
+  [/trachea|bronch|larynx|epiglottis|thyroid cartilage|cricoid/, 0xd9c7b0], [/thyroid gland|adrenal|suprarenal|pituitary|hypophysis|pineal/, 0xc9865e],
+  [/tooth|teeth|incisor|canine|molar/, 0xf3efe4], [/eye|lens|cornea|retina|sclera/, 0xf2f2f2], [/tongue/, 0xd57a7a],
+  [/esophag|oesophag|pharynx/, 0xd4a28e], [/testis|epididymis|prostate|seminal|penis|spongiosum|cavernosum/, 0xc99a8a],
+  [/skin|hair|nail|eyebrow/, 0xe8b796], [/breast|mammary|nipple/, 0xe8b796],
+];
+const colorFor = (m, L) => {
+  if (KIND_COLOR[m.k]) return KIND_COLOR[m.k];
+  if (m.l === 'organs' || m.l === 'nervous') { const hit = ORGAN_COLOR.find(([re]) => re.test(m.en)); if (hit) return hit[1]; }
+  return L.color;
+};
 const REGIONS = [
   ['head', '頭'], ['neck', '頸'], ['thorax', '胸'], ['abdomen', '腹'], ['back', '背'],
   ['upper limb', '上肢'], ['lower limb', '下肢'], ['', '其他/軀幹'],
 ];
 const SELECT_EMISSIVE = new THREE.Color(0x1d5cff);
 const FADE_OPACITY = 0.12;
-const XRAY_MAT = new THREE.MeshBasicMaterial({ color: 0x3d7bff, transparent: true, opacity: 0.28, depthTest: false, depthWrite: false });
+// one optional section plane shared by every material (see the 切面 controls)
+const clipPlanes = [];
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+const XRAY_MAT = new THREE.MeshBasicMaterial({ color: 0x3d7bff, transparent: true, opacity: 0.28, depthTest: false, depthWrite: false, clippingPlanes: clipPlanes });
+
+// ---------- model quality ----------
+// hd: more faces, smoother surfaces (desktop); sd: the lighter set (phones, data saver). ?q=sd|hd overrides.
+const qParam = new URLSearchParams(location.search).get('q');
+const prefersSD = matchMedia('(max-width: 760px)').matches || navigator.connection?.saveData || (navigator.deviceMemory && navigator.deviceMemory <= 2);
+const QUALITY = qParam === 'hd' || qParam === 'sd' ? qParam : (localStorage.getItem('viewer.quality') || (prefersSD ? 'sd' : 'hd'));
+const MODEL_DIR = QUALITY === 'hd' ? 'hd' : '.';
 
 // ---------- scene ----------
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
 const controls = new OrbitControls(camera, canvas);
@@ -45,6 +75,8 @@ const key = new THREE.DirectionalLight(0xffffff, 1.6);
 camera.add(key); key.position.set(80, 120, 200);
 const fill = new THREE.DirectionalLight(0xffffff, 0.5);
 camera.add(fill); fill.position.set(-150, -50, 50);
+const rim = new THREE.DirectionalLight(0xfff1e6, 0.7);
+camera.add(rim); rim.position.set(0, 60, -200);
 scene.add(camera);
 const root = new THREE.Group();
 scene.add(root);
@@ -66,6 +98,7 @@ const activeRegions = new Set();  // empty = all
 let selected = new Set();
 let multi = false;
 let showLabels = false;
+let dissect = false;          // tap a structure to peel it away
 let mode = 'explore';
 const undoStack = [];
 let zh = {};
@@ -97,7 +130,7 @@ async function load() {
   // Load visible layers first so something shows quickly.
   const order = [...LAYERS].sort((a, b) => b.visible - a.visible);
   await Promise.all(order.map(async (L) => {
-    const gltf = await loader.loadAsync(`models/${L.id}.glb`);
+    const gltf = await loader.loadAsync(`models/${MODEL_DIR}/${L.id}.glb`).catch(() => loader.loadAsync(`models/${L.id}.glb`));
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
       const id = o.name.replace(/_\d+$/, '') || o.parent?.name;
@@ -105,8 +138,9 @@ async function load() {
       if (!m) return;
       if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
       o.geometry.computeBoundsTree();
-      const color = KIND_COLOR[m.k] ?? L.color;
-      o.material = new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0, side: THREE.DoubleSide });
+      const color = colorFor(m, L);
+      const rough = m.l === 'skeleton' ? 0.75 : m.l === 'vessels' ? 0.45 : m.l === 'organs' ? 0.5 : 0.62;
+      o.material = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0, side: THREE.DoubleSide, clippingPlanes: clipPlanes });
       o.userData.id = id;
       parts.set(id, { id, mesh: o, meta: m, hidden: false, faded: false, baseColor: color });
     });
@@ -117,7 +151,9 @@ async function load() {
   }));
   loadingEl.hidden = true;
   frameAll();
+  applySex();
   buildSearchIndex();
+  renderStructureList();
   handleHash();
 }
 
@@ -126,7 +162,7 @@ function regionOk(p) {
   return activeRegions.size === 0 || activeRegions.has(p.meta.r);
 }
 function isShown(p) {
-  return layerState[p.meta.l].visible && regionOk(p) && !p.hidden;
+  return layerState[p.meta.l].visible && regionOk(p) && !p.hidden && !p.sexHidden;
 }
 function apply(p) {
   const L = layerState[p.meta.l];
@@ -149,7 +185,7 @@ function apply(p) {
   }
   if (p.xray) p.xray.visible = sel;
 }
-function applyAll() { parts.forEach(apply); updateLabels(); }
+function applyAll() { parts.forEach(apply); if (hovered && !selected.has(hovered.id)) { hovered.mesh.material.emissive.copy(SELECT_EMISSIVE); hovered.mesh.material.emissiveIntensity = 0.22; } updateLabels(); }
 
 function snapshot() {
   undoStack.push([...parts.values()].map((p) => [p.id, p.hidden, p.faded]));
@@ -222,6 +258,7 @@ canvas.addEventListener('pointerup', (e) => {
   down = null;
   const p = pick(e);
   if (mode === 'find') return quizClick(p);
+  if (dissect) { if (p) { snapshot(); p.hidden = true; selected.delete(p.id); applyAll(); renderInfo(); } return; }
   if (!p) { if (!multi && !e.shiftKey) select([]); return; }
   if (multi || e.shiftKey || e.metaKey || e.ctrlKey) {
     const s = new Set(selected);
@@ -237,6 +274,7 @@ canvas.addEventListener('pointermove', (e) => {
   hoverRAF = requestAnimationFrame(() => {
     hoverRAF = 0;
     const p = mode === 'explore' ? pick(e) : null;
+    setHover(p);
     if (!p) { hoverEl.hidden = true; return; }
     const r = canvas.getBoundingClientRect();
     hoverEl.textContent = displayName(p);
@@ -245,7 +283,14 @@ canvas.addEventListener('pointermove', (e) => {
     hoverEl.hidden = false;
   });
 });
-canvas.addEventListener('pointerleave', () => { hoverEl.hidden = true; });
+canvas.addEventListener('pointerleave', () => { hoverEl.hidden = true; setHover(null); });
+let hovered = null;
+function setHover(p) {
+  if (p === hovered) return;
+  if (hovered && !selected.has(hovered.id)) hovered.mesh.material.emissiveIntensity = 0;
+  hovered = p;
+  if (p && !selected.has(p.id)) { p.mesh.material.emissive.copy(SELECT_EMISSIVE); p.mesh.material.emissiveIntensity = 0.22; }
+}
 
 // ---------- selection & info ----------
 function select(ids) {
@@ -283,21 +328,37 @@ function renderNoteLinks(term) {
   const box = $('#infoNotes');
   box.innerHTML = '';
   if (!noteIndex) return;
-  const t = term.toLowerCase();
-  const words = [t, t.split(' ').slice(-2).join(' '), t.split(' ').pop()].filter((w) => w.length > 3);
+  const t = term.toLowerCase().replace(/, nsn$/, '');
+  // the whole name only ("rectus abdominis"), never a bare "anterior" or "major"
+  const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|[^a-z])(${esc}s?)(?=[^a-z]|$)`, 'i');
   const hits = [];
   for (const n of noteIndex.pages) {
-    const w = words.find((w) => n.text.includes(w));
-    if (w) hits.push([n, w]);
-    if (hits.length >= 8) break;
+    const m = re.exec(n.text);
+    if (!m) continue;
+    const snippets = [];
+    let i = m.index + m[1].length;
+    while (i >= 0 && snippets.length < 2) {
+      snippets.push(n.text.slice(Math.max(0, i - 28), i + t.length + 36).replace(/\s+/g, ' '));
+      const next = re.exec(n.text.slice(i + t.length));
+      i = next ? i + t.length + next.index + next[1].length : -1;
+    }
+    hits.push([n, snippets]);
+    if (hits.length >= 6) break;
   }
-  if (!hits.length) return;
+  if (!hits.length) { box.innerHTML = '<span class="muted">筆記裡沒有提到這個結構</span>'; return; }
   box.innerHTML = '<b>相關筆記</b>';
-  for (const [n, w] of hits) {
+  for (const [n, snippets] of hits) {
     const a = document.createElement('a');
-    a.href = `notes/${n.slug}.html#:~:text=${encodeURIComponent(w)}`;
+    a.href = `notes/${n.slug}.html#:~:text=${encodeURIComponent(t)}`;
     a.textContent = n.title;
     box.append(a);
+    for (const sn of snippets) {
+      const d = document.createElement('div');
+      d.className = 'snippet';
+      d.textContent = `…${sn}…`;
+      box.append(d);
+    }
   }
 }
 function selectGroup(name) {
@@ -332,6 +393,94 @@ $('#actIsolate').onclick = isolateSel;
 $('#actFocus').onclick = focusSel;
 $('#infoClose').onclick = () => select([]);
 $('#undo').onclick = undo;
+$('#dissect').onclick = (e) => { dissect = !dissect; e.currentTarget.setAttribute('aria-pressed', dissect); canvas.style.cursor = dissect ? 'crosshair' : ''; };
+$('#actLink').onclick = async () => {
+  const ids = [...selected];
+  const one = ids.length === 1 ? parts.get(ids[0]) : null;
+  const url = location.origin + location.pathname + (one ? `#t=${encodeURIComponent(baseName(one.meta.en))}` : `#iso=${ids.join(',')}`);
+  try { await navigator.clipboard.writeText(url); $('#actLink').textContent = '已複製'; }
+  catch { prompt('複製這個連結：', url); }
+  setTimeout(() => { $('#actLink').textContent = '複製連結'; }, 1500);
+};
+$('#actMirror').onclick = () => {
+  // add the same structure on the other side
+  const ids = new Set(selected);
+  for (const id of selected) {
+    const en = parts.get(id).meta.en;
+    const other = /\b(left|right)\b/.test(en) ? en.replace(/\b(left|right)\b/, (m) => (m === 'left' ? 'right' : 'left')) : null;
+    if (other) for (const p of parts.values()) if (p.meta.en === other) ids.add(p.id);
+  }
+  select([...ids]);
+};
+
+// ---------- male / female ----------
+const MALE_ONLY = /testis|epididymis|seminal vesicle|prostate|penis|spongiosum|cavernosum|scrotum|ductus deferens|vas deferens|spermatic/;
+let sex = localStorage.getItem('viewer.sex') || 'male';
+function applySex() {
+  parts.forEach((p) => { p.sexHidden = sex === 'female' && MALE_ONLY.test(p.meta.en); });
+  $$('[data-sex]').forEach((b) => b.classList.toggle('on', b.dataset.sex === sex));
+  $('#sexNote').hidden = sex !== 'female';
+  applyAll();
+}
+$$('[data-sex]').forEach((b) => { b.onclick = () => { sex = b.dataset.sex; localStorage.setItem('viewer.sex', sex); applySex(); if (selected.size) renderInfo(); }; });
+$('#quality').onclick = () => { localStorage.setItem('viewer.quality', QUALITY === 'hd' ? 'sd' : 'hd'); location.reload(); };
+$('#quality').textContent = QUALITY === 'hd' ? '高精細' : '省流量';
+$('#quality').title = QUALITY === 'hd' ? '目前載入高精細模型，點一下改用較小的版本' : '目前載入較小的模型，點一下改用高精細版本';
+
+// ---------- section plane ----------
+const CLIP_AXES = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+const clipUI = { on: false, axis: 'z', flip: false, k: 0.5 };
+function applyClip() {
+  clipPlanes.length = 0;
+  if (clipUI.on) {
+    const box = boxOf(parts.keys());
+    const n = new THREE.Vector3(...CLIP_AXES[clipUI.axis]).multiplyScalar(clipUI.flip ? 1 : -1);
+    const min = box.min[clipUI.axis], max = box.max[clipUI.axis];
+    const at = min + (max - min) * clipUI.k;
+    // keep the side the normal points to
+    clipPlane.set(n, -n.dot(new THREE.Vector3().setComponent('xyz'.indexOf(clipUI.axis), at)));
+    clipPlanes.push(clipPlane);
+  }
+  parts.forEach((p) => { p.mesh.material.needsUpdate = true; });
+  XRAY_MAT.needsUpdate = true;
+  $('#clipRange').disabled = !clipUI.on;
+  $('#clipOn').setAttribute('aria-pressed', clipUI.on);
+}
+$('#clipOn').onclick = () => { clipUI.on = !clipUI.on; applyClip(); };
+$('#clipFlip').onclick = () => { clipUI.flip = !clipUI.flip; applyClip(); };
+$('#clipRange').oninput = (e) => { clipUI.k = +e.target.value; if (!clipUI.on) clipUI.on = true; applyClip(); };
+$$('[data-clip]').forEach((b) => {
+  b.onclick = () => { clipUI.axis = b.dataset.clip; clipUI.on = true; $$('[data-clip]').forEach((x) => x.classList.toggle('on', x === b)); applyClip(); };
+});
+
+// ---------- structure list ----------
+function renderStructureList() {
+  const box = $('#structures');
+  box.innerHTML = '';
+  for (const L of LAYERS) {
+    const names = new Map();
+    for (const p of parts.values()) {
+      if (p.meta.l !== L.id || !regionOk(p)) continue;
+      const b = baseName(p.meta.en);
+      if (!names.has(b)) names.set(b, []);
+      names.get(b).push(p.id);
+    }
+    if (!names.size) continue;
+    const d = document.createElement('details');
+    d.innerHTML = `<summary><i class="swatch" style="background:#${L.color.toString(16).padStart(6, '0')}"></i>${L.zh} <small>${names.size}</small></summary>`;
+    const ul = document.createElement('ul');
+    ul.className = 'results static';
+    for (const [b, ids] of [...names].sort((a, c) => a[0].localeCompare(c[0]))) {
+      const li = document.createElement('li');
+      const z = zh[b.toLowerCase()] || '';
+      li.innerHTML = `${b}${z ? ` <small>${z}</small>` : ''}`;
+      li.onclick = () => gotoPart(ids[0], ids);
+      ul.append(li);
+    }
+    d.append(ul);
+    box.append(d);
+  }
+}
 $('#showAll').onclick = showAll;
 $('#multi').onclick = (e) => { multi = !multi; e.currentTarget.setAttribute('aria-pressed', multi); };
 $('#labels').onclick = (e) => { showLabels = !showLabels; e.currentTarget.setAttribute('aria-pressed', showLabels); updateLabels(); };
@@ -340,7 +489,9 @@ $('#reset').onclick = () => {
   parts.forEach((p) => { p.hidden = false; p.faded = false; });
   LAYERS.forEach((l) => Object.assign(layerState[l.id], l));
   activeRegions.clear();
-  renderLayerUI(); renderRegionUI(); select([]); frameAll(VIEWS.front);
+  if (dissect) $('#dissect').click();
+  clipUI.on = false; applyClip();
+  renderLayerUI(); renderRegionUI(); renderStructureList(); select([]); frameAll(VIEWS.front);
 };
 addEventListener('keydown', (e) => {
   if (e.target.matches('input')) return;
@@ -350,7 +501,9 @@ addEventListener('keydown', (e) => {
   else if (k === 'f') fadeSel();
   else if (k === 'i') isolateSel();
   else if (k === ' ') { e.preventDefault(); focusSel(); }
-  else if (k === 'escape') select([]);
+  else if (k === 'd') $('#dissect').click();
+  else if (k === 'c') $('#clipOn').click();
+  else if (k === 'escape') { select([]); if (dissect) $('#dissect').click(); }
 });
 
 // ---------- labels ----------
@@ -405,7 +558,7 @@ function renderRegionUI() {
   const all = document.createElement('button');
   all.textContent = '全身';
   all.className = activeRegions.size ? '' : 'on';
-  all.onclick = () => { activeRegions.clear(); renderRegionUI(); applyAll(); frameAll(); };
+  all.onclick = () => { activeRegions.clear(); renderRegionUI(); renderStructureList(); applyAll(); frameAll(); };
   box.append(all);
   for (const [id, label] of REGIONS) {
     const b = document.createElement('button');
@@ -414,7 +567,7 @@ function renderRegionUI() {
     b.onclick = (e) => {
       if (!(e.shiftKey || multi)) activeRegions.clear();
       activeRegions.has(id) ? activeRegions.delete(id) : activeRegions.add(id);
-      renderRegionUI(); applyAll(); frameAll();
+      renderRegionUI(); renderStructureList(); applyAll(); frameAll();
     };
     box.append(b);
   }

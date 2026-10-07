@@ -40,6 +40,13 @@
     <div class="panel-body">
       <input id="search" class="search small" placeholder="搜尋結構（英文 / 中文）…" autocomplete="off">
       <ul id="searchResults" class="results"></ul>
+      <h3>模型</h3>
+      <div class="chips">
+        <button data-sex="male" class="on">男</button>
+        <button data-sex="female">女</button>
+        <button id="quality" title="切換模型精細度">高精細</button>
+      </div>
+      <p id="sexNote" class="note-small" hidden>目前的開放資料（BodyParts3D）只有男性全身模型；女性模式會隱藏男性專有器官，女性生殖器官請參考筆記圖片。</p>
       <h3>系統層</h3>
       <div id="layers"></div>
       <h3>區域</h3>
@@ -50,6 +57,17 @@
         <button data-view="left">左</button><button data-view="right">右</button>
         <button data-view="top">上</button><button data-view="bottom">下</button>
       </div>
+      <h3>切面 <small>(C)</small></h3>
+      <div class="chips">
+        <button data-clip="x" title="矢狀切面">左右</button>
+        <button data-clip="y" title="水平切面">上下</button>
+        <button data-clip="z" class="on" title="冠狀切面">前後</button>
+        <button id="clipFlip" title="保留另一側">翻面</button>
+        <button id="clipOn" aria-pressed="false" title="開關切面">開啟</button>
+      </div>
+      <input id="clipRange" type="range" min="0.02" max="0.98" step="0.01" value="0.5" aria-label="切面位置" disabled>
+      <h3>結構清單</h3>
+      <div id="structures" class="structures"></div>
     </div>
   </aside>
 
@@ -67,6 +85,8 @@
       <button id="actFade" title="F">半透明</button>
       <button id="actIsolate" title="I">只看這個</button>
       <button id="actFocus" title="空白鍵">置中</button>
+      <button id="actMirror" title="一起選取另一側的同名結構">對側</button>
+      <button id="actLink" title="複製可以直接打開這個結構的網址">複製連結</button>
     </div>
     <div id="infoGroups" class="chips small"></div>
     <div id="infoNotes" class="info-notes"></div>
@@ -77,6 +97,7 @@
     <button id="undo" title="復原 (Ctrl+Z)">↶ 復原</button>
     <button id="showAll" title="全部顯示">全部顯示</button>
     <button id="multi" aria-pressed="false" title="多選 (按住 Shift 也可)">多選</button>
+    <button id="dissect" aria-pressed="false" title="開啟後，點到的結構會被移開 (D)">✂ 點擊移除</button>
     <button id="labels" aria-pressed="false" title="顯示已選結構的標籤">標籤</button>
     <button id="reset" title="重設">重設</button>
   </div>

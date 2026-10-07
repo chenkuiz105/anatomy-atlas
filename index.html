@@ -27,6 +27,17 @@
   <input id="q" class="search" type="search" placeholder="搜尋全部筆記內容（中英文皆可，例如：brachial plexus、腕隧道）">
   <div id="hits"></div>
   <div id="sections"></div>
+  <details class="legend" id="progressBox">
+    <summary>學習進度與備份</summary>
+    <div id="progressStats" class="muted">載入中…</div>
+    <p class="muted" style="font-size:13px">作答紀錄與複習勾選都存在這個瀏覽器裡。換裝置時先在這裡匯出，再到另一台匯入。</p>
+    <div class="tools">
+      <button id="exportProgress">⬇ 匯出進度</button>
+      <button id="importProgress">⬆ 匯入進度</button>
+      <input id="importFile" type="file" accept="application/json" hidden>
+      <button id="clearProgress">清除全部紀錄</button>
+    </div>
+  </details>
   <details class="legend">
     <summary>筆記顏色說明</summary>
     <p><span class="c-red"><b>紅</b></span>：口訣、重點　<span class="b-orange"><b>粗體+橘螢光</b></span>：影片重點、國考重點　<span class="c-green"><b>綠</b></span>：血管　<span class="c-purple"><b>紫</b></span>：疾病　<span class="c-orange"><b>橘</b></span>：神經　<span class="c-blue"><b>藍</b></span>：治療手法</p>

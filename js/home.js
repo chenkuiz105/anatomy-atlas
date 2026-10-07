@@ -57,6 +57,61 @@
     }
   }
 
+  // learning progress: quiz results per chapter + export / import of this browser's records
+  const PREFIXES = ['quiz.', 'progress.', 'pref.', 'viewer.', 'theme'];
+  const ours = (k) => PREFIXES.some((p) => k.startsWith(p));
+  function allRecords() {
+    const out = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (ours(k)) out[k] = localStorage.getItem(k); } } catch { /* unavailable */ }
+    return out;
+  }
+  function renderProgress(quizzes) {
+    const box = document.getElementById('progressStats');
+    const byCh = new Map();
+    let done = 0, right = 0;
+    for (const z of quizzes) {
+      const r = store.get(`quiz.${z.key}`, null);
+      const c = byCh.get(z.slug) || { title: z.title, n: 0, done: 0, right: 0 };
+      c.n++;
+      if (r) { c.done++; done++; if (r.ok) { c.right++; right++; } }
+      byCh.set(z.slug, c);
+    }
+    const reviewed = pages.filter((p) => reviewCount(p.slug) > 0).length;
+    const rows = [...byCh].filter(([, c]) => c.done).sort((a, b) => b[1].done - a[1].done).slice(0, 12)
+      .map(([slug, c]) => `<a href="quiz.html#ch=${slug}">${esc(c.title)}</a>：${c.done}/${c.n} 題，答對 ${c.right}${c.done - c.right ? `，<span class="c-red">錯 ${c.done - c.right}</span>` : ''}`);
+    box.innerHTML = `<p>題庫 ${quizzes.length} 題：做過 <b>${done}</b>，答對 <b>${right}</b>${done ? `（${Math.round((100 * right) / done)}%）` : ''}；已開始複習 <b>${reviewed}</b> / ${pages.length} 章。</p>`
+      + (rows.length ? `<ul style="font-size:14px;margin:4px 0">${rows.map((r) => `<li>${r}</li>`).join('')}</ul>` : '');
+  }
+  Promise.all([fetch('notes/quizzes.json').then((r) => r.json()), fetch('notes/index.json').then((r) => r.json())])
+    .then(([qz, j]) => { pages = j.pages; renderProgress(qz); }).catch(() => { document.getElementById('progressStats').textContent = ''; });
+  document.getElementById('exportProgress').onclick = () => {
+    const blob = new Blob([JSON.stringify({ app: 'anatomy-atlas', at: new Date().toISOString(), records: allRecords() }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `anatomy-atlas-progress-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  const fileIn = document.getElementById('importFile');
+  document.getElementById('importProgress').onclick = () => fileIn.click();
+  fileIn.onchange = async () => {
+    const f = fileIn.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      const rec = j.records || j;
+      let n = 0;
+      for (const [k, v] of Object.entries(rec)) if (ours(k) && typeof v === 'string') { localStorage.setItem(k, v); n++; }
+      alert(`已匯入 ${n} 筆紀錄。`);
+      location.reload();
+    } catch { alert('這個檔案不是本站匯出的進度檔。'); }
+    fileIn.value = '';
+  };
+  document.getElementById('clearProgress').onclick = () => {
+    if (!confirm('確定要清除這個瀏覽器裡所有作答與複習紀錄嗎？（建議先匯出備份）')) return;
+    for (const k of Object.keys(allRecords())) localStorage.removeItem(k);
+    location.reload();
+  };
+
   const q = document.getElementById('q');
   const hits = document.getElementById('hits');
   q.addEventListener('input', () => {

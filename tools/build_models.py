@@ -34,9 +34,9 @@ def proc(i):
     # QUALITY=sd (default, phones) or hd (desktop): how many faces each part keeps
     hd = os.environ.get('QUALITY') == 'hd'
     if lay == 'skin':
-        tgt = 160000 if hd else 60000
+        tgt = 120000 if hd else 60000
     elif hd:
-        tgt = int(min(max(n * 0.4, 2000), 30000))
+        tgt = int(min(max(n * 0.3, 1500), 18000))
     else:
         tgt = int(min(max(n * 0.12, 400), 5000))
     v, f = m.vertices, m.faces

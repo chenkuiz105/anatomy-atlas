@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Convert Notion "enhanced markdown" exports into static HTML note pages.
+"""Build static HTML note pages from Notion's official HTML export.
 
-Usage: python3 tools/build_notes.py <export_dir> <site_dir>
+Usage: python3 tools/build_notes.py <unzipped export dir> <site_dir>
 
-<export_dir> holds NN-<pageid>.md files (first line "# title", second line an HTML
-comment with the Notion url + properties JSON) and img/<pageid>/<n>.<ext>.
-Writes <site_dir>/notes/<slug>.html, copies images, and writes notes/index.json
-(page list + lowercase plain text, used by the home page search and the 3D viewer).
+Page order and slugs come from tools/pages.txt (one Notion page id per line; slug = line
+number). Colours/highlights are mapped to the site's classes, images are copied to
+notes/img/<pageid>/, supplements/<slug>.md (book notes + past-exam quizzes) are appended,
+and notes/index.json, notes/quizzes.json and models/zh.json are written.
 """
 import html
 import json
@@ -439,42 +439,125 @@ def build_zh(index):
     print(f'{len(zh)} Chinese names from notes')
 
 
+def load_export(export_dir):
+    """Pages from Notion's official HTML export (Export -> HTML, include subpages)."""
+    from bs4 import BeautifulSoup, NavigableString
+    order = [l.strip() for l in open(os.path.join(os.path.dirname(__file__), 'pages.txt')) if l.strip()]
+    files = {}
+    for root, _, fs in os.walk(export_dir):
+        for f in fs:
+            m = re.search(r'([0-9a-f]{32})\.html$', f)
+            if m:
+                files[m.group(1)] = os.path.join(root, f)
+    slug_of = {pid: f'{i + 1:02d}' for i, pid in enumerate(order)}
+    pages = []
+    for i, pid in enumerate(order):
+        path = files.get(pid)
+        if not path:
+            print('missing in export:', pid)
+            continue
+        soup = BeautifulSoup(open(path, encoding='utf-8').read(), 'html.parser')
+        title = soup.find('h1', class_='page-title').get_text()
+        icon = soup.find('article').get('data-notion-page-icon', '')
+        if icon and not icon.startswith(('http', '/')):
+            title = f'{icon} {title}'
+        props = {}
+        for row in soup.select('table.properties tr'):
+            k = row.find('th').get_text().strip()
+            td = row.find('td')
+            cb = td.find('input')
+            props[k] = ('__YES__' if cb.has_attr('checked') else '__NO__') if cb else td.get_text().strip()
+        body = soup.find('div', class_='page-body')
+        base = os.path.dirname(path)
+        imgs = []
+        for img in body.find_all('img'):
+            src = img.get('src', '')
+            if src.startswith('http'):
+                continue
+            from urllib.parse import unquote
+            local = os.path.normpath(os.path.join(base, unquote(src)))
+            name = f'{pid}/{len(imgs) + 1}{os.path.splitext(local)[1].lower()}'
+            imgs.append((local, name))
+            img.attrs = {'src': f'img/{name}', 'loading': 'lazy', 'alt': ''}
+            a = img.find_parent('a')
+            if a:
+                a.unwrap()
+        for a in body.find_all('a'):
+            href = a.get('href', '')
+            m = re.search(r'([0-9a-f]{32})\.html', href)
+            if m and m.group(1) in slug_of:
+                a['href'] = f'{slug_of[m.group(1)]}.html'
+            elif href.startswith('http'):
+                a['target'] = '_blank'; a['rel'] = 'noopener'
+        # colours: Notion export uses "teal" for what the editor calls green
+        def cmap(c):
+            return 'green' if c.startswith('teal') else c
+        for el in body.find_all(True):
+            cls = el.get('class') or []
+            new = []
+            for c in cls:
+                m = re.match(r'(?:highlight|block-color)-(\w+?)(_background)?$', c)
+                if m:
+                    if m.group(1) != 'default':
+                        new.append(('b-' if m.group(2) else 'c-') + cmap(m.group(1)))
+                elif c in ('column-list',):
+                    new.append('columns')
+                elif c in ('column', 'callout', 'toggle', 'indented', 'simple-table', 'image', 'link-to-page'):
+                    new.append(c)
+            style = el.get('style', '')
+            if 'border-bottom' in style:
+                new.append('u')
+            for attr in ('style', 'data-notion-highlight', 'data-notion-column-list', 'data-notion-column-ratio', 'dir'):
+                if attr in el.attrs:
+                    del el.attrs[attr]
+            if el.name in ('th', 'td') and el.get('id') and not re.match(r'^[0-9a-f-]{36}$', el['id']):
+                del el['id']
+            if new:
+                el['class'] = new
+            elif 'class' in el.attrs:
+                del el['class']
+            if el.name == 'mark':
+                el.name = 'span'
+        for fig in body.find_all('figure', class_='callout'):
+            fig.name = 'div'
+        for t in list(body.find_all(string=lambda x: x and '★' in x)):
+            parts = t.split('★')
+            frag = []
+            for j, part in enumerate(parts):
+                if j:
+                    st = soup.new_tag('span'); st['class'] = ['star']; st.string = '★'; frag.append(st)
+                if part:
+                    frag.append(NavigableString(part))
+            t.replace_with(*frag)
+        headings = []
+        for h in body.find_all(['h1', 'h2', 'h3', 'h4']):
+            lv = min(int(h.name[1]) + 1, 5)
+            h.name = f'h{lv}'
+            hid = h.get('id') or f'h{len(headings)}'
+            h['id'] = hid
+            headings.append((lv, hid, html.escape(h.get_text())))
+        pages.append(dict(n=i + 1, pid=pid, title=title, props=props, slug=slug_of[pid],
+                          html=body.decode_contents(), imgs=imgs, headings=headings))
+    return pages
+
+
 def main():
     os.makedirs(os.path.join(OUT, 'img'), exist_ok=True)
-    files = sorted(f for f in os.listdir(SRC) if re.match(r'^\d\d-[0-9a-f]{32}\.md$', f))
-    pages = []
-    for f in files:
-        n = int(f[:2])
-        pid = f[3:35]
-        text = open(os.path.join(SRC, f), encoding='utf-8').read()
-        lines = text.split('\n')
-        title = lines[0].lstrip('# ').strip()
-        props = {}
-        m = re.match(r'<!-- notion: (\S+) \| properties: (.*) -->$', lines[1].strip()) if len(lines) > 1 else None
-        url = ''
-        if m:
-            url = m.group(1)
-            try:
-                props = json.loads(m.group(2))
-            except json.JSONDecodeError:
-                pass
-        pages.append(dict(n=n, pid=pid, title=title, url=url, props=props, lines=lines[2:], slug=slugify(n, pid)))
+    pages = load_export(SRC)
 
     index = []
     for k, p in enumerate(pages):
         ctx = Ctx(p['pid'], [])
-        out = []
-        parse(p['lines'], 0, 0, ctx, out)
-        body = '\n'.join(out)
+        ctx.headings = list(p['headings'])
+        body = p['html']
         CURRENT.update(slug=p['slug'], title=p['title'], section=p['props'].get('區段', ''))
         sup = os.path.join(SITE, 'supplements', f'{p["slug"]}.md')
         if os.path.exists(sup):
             body += '\n' + render_supplement(sup, ctx)
-        for local, name in ctx.img_map:
+        for srcf, name in p['imgs']:
             dst = os.path.join(OUT, 'img', name)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
-            srcf = os.path.join(SRC, local)
-            if os.path.exists(srcf) and not os.path.exists(dst):
+            if os.path.exists(srcf):
                 shutil.copyfile(srcf, dst)
         toc = '\n'.join(f'<a class="l{lv}" href="#{hid}">{t}</a>' for lv, hid, t in ctx.headings if lv <= 3)
         prev_ = pages[k - 1] if k > 0 else None

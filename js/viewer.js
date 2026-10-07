@@ -51,11 +51,12 @@ scene.add(root);
 
 function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
+  if (!r.width || !r.height) return;
   renderer.setSize(r.width, r.height, false);
   camera.aspect = r.width / r.height;
   camera.updateProjectionMatrix();
 }
-addEventListener('resize', resize);
+new ResizeObserver(resize).observe(canvas.parentElement);
 resize();
 
 // ---------- state ----------
@@ -206,10 +207,19 @@ function pick(ev) {
   return hit ? parts.get(hit.object.userData.id) : null;
 }
 
+// a tap selects; drags, pinches and two-finger pans never do
 let down = null;
-canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+const activePointers = new Set();
+canvas.addEventListener('pointerdown', (e) => {
+  activePointers.add(e.pointerId);
+  down = activePointers.size === 1 ? { x: e.clientX, y: e.clientY } : null;
+});
+canvas.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointerId); down = null; });
 canvas.addEventListener('pointerup', (e) => {
-  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
+  activePointers.delete(e.pointerId);
+  const slop = e.pointerType === 'mouse' ? 6 : 12;
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > slop) { down = null; return; }
+  down = null;
   const p = pick(e);
   if (mode === 'find') return quizClick(p);
   if (!p) { if (!multi && !e.shiftKey) select([]); return; }

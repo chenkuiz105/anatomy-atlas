@@ -57,3 +57,24 @@
   .quiz-choices { grid-template-columns: 1fr; }
   .toolbar { flex-wrap: wrap; justify-content: center; width: calc(100% - 24px); }
 }
+
+/* phone / tablet */
+@media (max-width: 760px) {
+  .viewer-page .topbar nav { display: flex; }
+  .mode-switch { width: 100%; }
+  .mode-switch button { flex: 1; padding: 4px 6px; font-size: 14px; }
+  .toolbar { gap: 4px; padding: 4px; bottom: 8px; }
+  .toolbar button { flex: 1 1 auto; padding: 4px 6px; font-size: 14px; }
+  .panel.left { top: 8px; left: 8px; }
+  .panel.left:not(.collapsed) { width: calc(100% - 16px); max-height: calc(100% - 72px); }
+  .panel.right { left: 8px; right: 8px; bottom: 60px; }
+  .actions button { flex: 1 1 auto; }
+  .layer-row { grid-template-columns: 22px 1fr 110px; }
+  .layer-row input[type=range] { width: 110px; }
+  .credit { font-size: 10px; padding: 1px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .label3d { font-size: 11px; }
+}
+@media (pointer: coarse) {
+  .chips button { min-height: 34px; padding: 2px 10px; }
+  .results li { padding: 8px 6px; }
+}

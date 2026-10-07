@@ -552,7 +552,9 @@ def main():
         body = p['html']
         CURRENT.update(slug=p['slug'], title=p['title'], section=p['props'].get('區段', ''))
         sup = os.path.join(SITE, 'supplements', f'{p["slug"]}.md')
-        if os.path.exists(sup):
+        # SKIP_SUPPLEMENTS=43,53 leaves unfinished supplement drafts out of the build
+        skip = os.environ.get('SKIP_SUPPLEMENTS', '').split(',')
+        if os.path.exists(sup) and p['slug'] not in skip:
             body += '\n' + render_supplement(sup, ctx)
         for srcf, name in p['imgs']:
             dst = os.path.join(OUT, 'img', name)

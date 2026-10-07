@@ -192,3 +192,41 @@ mark { background: var(--hl); color: inherit; }
 .qb-stats { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
 .quiz-card .spacer { flex: 1; }
 .qnext { margin-top: 10px; text-align: right; }
+
+/* ---------- phone / tablet ---------- */
+html { -webkit-text-size-adjust: 100%; }
+.note-layout > main { min-width: 0; }
+.note a, .note p, .note li { overflow-wrap: anywhere; }
+.toc-fab { display: none; }
+@media (pointer: coarse) {
+  button, .topbar nav a { min-height: 36px; }
+  .quiz-card .qopt { min-height: 44px; }
+}
+@media (max-width: 860px) {
+  .toc-fab { display: block; position: fixed; right: 14px; bottom: 16px; z-index: 30; border-radius: 999px; padding: 8px 16px; box-shadow: var(--shadow); background: var(--panel); }
+  .toc.open { display: block; position: fixed; align-self: stretch; top: 0; right: 0; bottom: 0; width: min(320px, 86vw); max-height: none; z-index: 40; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -4px 0 24px rgba(0,0,0,.2); padding: 16px; overflow: auto; }
+  .toc a { padding: 6px 0; }
+  .toc-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 35; }
+  .note .columns { display: block; }
+}
+@media (max-width: 600px) {
+  .topbar { gap: 6px; padding: 6px 10px; }
+  .topbar .brand { font-size: 0; }
+  .topbar .brand::before { content: "🦴"; font-size: 20px; }
+  .topbar nav { flex-wrap: nowrap; }
+  .topbar nav a { padding: 4px 8px; white-space: nowrap; }
+  .wrap { padding: 16px 12px 56px; }
+  .hero h1 { font-size: 24px; }
+  .cta { gap: 8px; }
+  .cta a { padding: 8px 12px; flex: 1 1 auto; text-align: center; }
+  .cards { grid-template-columns: 1fr; }
+  .note { padding: 12px 12px; border-radius: 0; border-left: 0; border-right: 0; }
+  .note-layout { padding: 0; }
+  .note h1 { font-size: 22px; }
+  .note h2 { font-size: 19px; }
+  .note h3 { font-size: 17px; }
+  .note table { font-size: 14px; }
+  .note td, .note th { padding: 3px 6px; }
+  .tools button { font-size: 14px; padding: 4px 8px; }
+  .lightbox img { max-width: 100vw; max-height: 100vh; }
+}

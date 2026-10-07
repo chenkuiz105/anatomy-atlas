@@ -24,6 +24,22 @@
     apply(store.get(key, false));
     b.onclick = () => { const on = !note.classList.contains(cls); apply(on); store.set(key, on); };
   }
+  // phone/tablet: table of contents as a slide-in drawer
+  const toc = document.querySelector('.toc');
+  if (toc) {
+    const fab = document.createElement('button');
+    fab.className = 'toc-fab';
+    fab.textContent = '☰ 目錄';
+    const backdrop = document.createElement('div');
+    backdrop.className = 'toc-backdrop';
+    backdrop.hidden = true;
+    const setOpen = (on) => { toc.classList.toggle('open', on); backdrop.hidden = !on; };
+    fab.onclick = () => setOpen(!toc.classList.contains('open'));
+    backdrop.onclick = () => setOpen(false);
+    toc.addEventListener('click', (e) => { if (e.target.closest('a')) setOpen(false); });
+    document.body.append(fab, backdrop);
+  }
+
   toggleBtn('cloze', 'cloze', 'pref.cloze');
   toggleBtn('examOnly', 'only-exam', 'pref.examOnly');
 
